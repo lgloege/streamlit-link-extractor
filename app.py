@@ -55,7 +55,7 @@ def get_files(links, regex=None):
     return file_links
 
 
-@st.cache
+# @st.cache
 async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
     ''' runs the main program
     given a base_url this extracts all files from base_url 
