@@ -13,23 +13,37 @@ import lxml
 import re
 
 
+def format_base_url(base_url):
+    # ensure url starts with https://
+    if not base_url.startswith(('http://', 'https://')):
+        base_url = 'https://' + base_url
+
+    # ensure url ends with /
+    if not base_url.endswith('/'):
+        base_url = base_url + '/'
+
+    return base_url
+
+
 async def get_html_async(base_url):
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as client:
-        async with client.get(base_url) as resp:
+    #base_url = format_base_url(base_url)
+
+    # may need to add this to ClientSession() connector=aiohttp.TCPConnector(ssl=False)
+    async with aiohttp.ClientSession() as client:
+        async with client.get(base_url, ssl=False) as resp:
             return await resp.text() if (resp.status == 200) else ""
 
 
-def get_links(html_page):
+def get_links(html_page, base_url):
     '''extracts all the links and sub-directories from html
     this extracts all hrefs in a tags
     '''
     # "lxml" supposed to be faster than "html.parser
     soup = BeautifulSoup(html_page, "lxml")
-
     regex = ".|(/$)"
-
-    links = [f"{base_url}{link.get('href')}" for link in soup.findAll(
-        'a', attrs={'href': re.compile(regex)})]
+    links = [f"{base_url}{link.get('href')}"
+             for link
+             in soup.findAll('a', attrs={'href': re.compile(regex)})]
 
     return links
 
@@ -53,8 +67,9 @@ def get_files(links, regex=None):
 # @st.cache
 async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
     files = []
+    base_url = format_base_url(base_url)
     html_page = await get_html_async(base_url)
-    links = get_links(html_page=html_page)
+    links = get_links(html_page=html_page, base_url=base_url)
     sub_dirs = get_sub_dirs(links)
     base_files = get_files(links, regex=regex)
     files.extend(base_files)
