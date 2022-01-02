@@ -7,7 +7,7 @@ import streamlit as st
 import requests
 import re
 from bs4 import BeautifulSoup
-
+import lxml
 
 def get_html(base_url):
     '''gets the HTML from base_url'''
