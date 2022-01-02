@@ -3,6 +3,5 @@ requests
 regex
 streamlit
 lxml
-itertools
 asyncio
 aiohttp
