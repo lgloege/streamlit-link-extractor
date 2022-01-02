@@ -1,21 +1,16 @@
 '''
 Streamlit app to extract links from a webpage
 Created: 2021-12-29
+Author: L. Gloege
 '''
 import streamlit.components.v1 as components
 import streamlit as st
-#import requests
-import re
 from bs4 import BeautifulSoup
-import lxml
+from itertools import chain
 import asyncio
 import aiohttp
-from itertools import chain
-
-# def get_html(base_url):
-#    '''gets the HTML from base_url'''
-#    req = requests.get(base_url)
-#    return req.text if (req.status_code == 200) else ''
+import lxml
+import re
 
 
 async def get_html_async(base_url):
@@ -62,7 +57,6 @@ async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
     links = get_links(html_page=html_page)
     sub_dirs = get_sub_dirs(links)
     base_files = get_files(links, regex=regex)
-    #files = files + base_files
     files.extend(base_files)
 
     # gathers files from sub-directories
@@ -77,50 +71,46 @@ async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
 
 
 # streamlit containters
-# sidebar is where the controls are
-# body holds output
 sidebar = st.sidebar
 body = st.container()
 
-# defines a session states
-# these are changed throughout the program
+# defines a session states changed throughout the program
 if "link_area" not in st.session_state or "extracted_links" not in st.session_state:
     st.session_state['link_area'] = 'placeholder text'
     st.session_state['extracted_links'] = ["placeholder text"]
 
 # sidebar controls
 with sidebar:
-    st.subheader("URL to search")
-    base_url = st.text_input('make sure to include  http:// or https://',
-                             'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/netcdf/')
+    st.title("Link Extractor")
+    st.write("An app to scrape webpage links")
 
+    st.title("Options")
     search_subs = st.checkbox('Search sub-directories', value=False)
 
-    prepend_base = st.checkbox(
-        'Append base URL to output', value=True)
-
-    st.subheader('''Filter results''')
-    custom_regex = st.text_input('can be a regular expression', '.nc$')
-
-    run_program = st.button('Get links')
+    prepend_base = st.checkbox('Append base URL to output', value=True)
+    custom_regex = st.text_input('Filter results by regular expression', '.')
 
     st.markdown("---")
-
-    st.subheader("Code availability")
-    st.markdown("[https://github.com/lgloege/streamlit_link_extractor](https://github.com/lgloege/streamlit_link_extractor)")
+    st.subheader(
+        "Code available on [GitHub](https://github.com/lgloege/streamlit_link_extractor)")
 
 
 # main content
 with body:
     st.title("Link extractor")
-    st.subheader('''Extract all the links from a webpage.''')
+    base_url = st.text_input(label='Extract links from this URL ** it must start with http:// or https:// and end with / **',
+                             value='https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/netcdf/')
 
+    # starts the program
+    run_program = st.button('Get links')
+
+    # exexcuted when run_program button clicked
     if run_program:
         with st.spinner('Wait for it...'):
             st.session_state['extracted_links'] = asyncio.run(main(
                 base_url=base_url, search_subs=search_subs, prepend_base_url=prepend_base))
 
-    # puts links in text_area by updaing st.session_state['link_area]
+    # prepend the base_url
     if prepend_base:
         st.session_state['link_area'] = '\n'.join(
             st.session_state['extracted_links'])
@@ -128,18 +118,18 @@ with body:
         st.session_state['link_area'] = '\n'.join(
             [x.replace(base_url, '') for x in st.session_state['extracted_links']])
 
-    # text_area with links
+    # extracted links
     extracted_linked_text = st.text_area(
         'Extracted links:',  st.session_state['link_area'], height=150)
 
-    # button to download data
-    st.download_button("Download to file",
+    # save to file
+    st.download_button("Save to file",
                        extracted_linked_text,
                        file_name="file_list.txt")
 
+    # using links with wget
     st.write("---")
-
-    st.subheader("Run in the terminal")
+    st.subheader("Download Link Content")
     st.markdown(
-        '''Save the extracted links to *file_list.txt* and run the following command.''')
+        '''Save the extracted links to *file_list.txt* then copy the following into your terminal''')
     st.code('wget -i file_list.txt')
