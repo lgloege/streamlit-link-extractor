@@ -57,11 +57,6 @@ def get_files(links, regex=None):
 
 # @st.cache
 async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
-    ''' runs the main program
-    given a base_url this extracts all files from base_url 
-    and its sub-directories. 
-    Can supply regular expression to keep on certain files
-    '''
     files = []
     html_page = await get_html_async(base_url)
     links = get_links(html_page=html_page)
