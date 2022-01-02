@@ -4,15 +4,24 @@ Created: 2021-12-29
 '''
 import streamlit.components.v1 as components
 import streamlit as st
-import requests
+#import requests
 import re
 from bs4 import BeautifulSoup
 import lxml
+import asyncio
+import aiohttp
+from itertools import chain
 
-def get_html(base_url):
-    '''gets the HTML from base_url'''
-    req = requests.get(base_url)
-    return req.text if (req.status_code == 200) else ''
+# def get_html(base_url):
+#    '''gets the HTML from base_url'''
+#    req = requests.get(base_url)
+#    return req.text if (req.status_code == 200) else ''
+
+
+async def get_html_async(base_url):
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as client:
+        async with client.get(base_url) as resp:
+            return await resp.text() if (resp.status == 200) else ""
 
 
 def get_links(html_page):
@@ -26,6 +35,7 @@ def get_links(html_page):
 
     links = [f"{base_url}{link.get('href')}" for link in soup.findAll(
         'a', attrs={'href': re.compile(regex)})]
+
     return links
 
 
@@ -46,23 +56,24 @@ def get_files(links, regex=None):
 
 
 @st.cache
-def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
+async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
     ''' runs the main program
     given a base_url this extracts all files from base_url 
     and its sub-directories. 
     Can supply regular expression to keep on certain files
     '''
     files = []
-    html_page = get_html(base_url)
+    html_page = await get_html_async(base_url)
     links = get_links(html_page=html_page)
     sub_dirs = get_sub_dirs(links)
     base_files = get_files(links, regex=regex)
-    files = files + base_files
+    #files = files + base_files
+    files.extend(base_files)
 
-    if search_subs:
-        for sub in sub_dirs:
-            sub_files = main(sub)
-            files = files + sub_files
+    # gathers files from sub-directories
+    coros = [main(sub) for sub in sub_dirs]
+    new_files = await asyncio.gather(*coros)
+    files.extend(chain(*new_files))
 
     if prepend_base_url:
         files = [base_url + file for file in files]
@@ -111,8 +122,8 @@ with body:
 
     if run_program:
         with st.spinner('Wait for it...'):
-            st.session_state['extracted_links'] = main(
-                base_url=base_url, search_subs=search_subs, prepend_base_url=prepend_base)
+            st.session_state['extracted_links'] = asyncio.run(main(
+                base_url=base_url, search_subs=search_subs, prepend_base_url=prepend_base))
 
     # puts links in text_area by updaing st.session_state['link_area]
     if prepend_base:
