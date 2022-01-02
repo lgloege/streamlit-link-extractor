@@ -107,7 +107,7 @@ with sidebar:
     st.markdown("---")
 
     st.subheader("Code availability")
-    st.markdown("[https://github.com](https://github.com)")
+    st.markdown("[https://github.com/lgloege/streamlit_link_extractor](https://github.com/lgloege/streamlit_link_extractor)")
 
 
 # main content
