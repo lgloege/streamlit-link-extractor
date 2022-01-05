@@ -59,7 +59,7 @@ def get_files(links, regex=None):
     can keep files based on a regular expression
     '''
     if regex is None:
-        regex = r'.nc$'
+        regex = r'[^/]$'
     file_links = [link for link in links if re.search(regex, link)]
     return file_links
 
@@ -123,7 +123,10 @@ with body:
     if run_program:
         with st.spinner('Wait for it...'):
             st.session_state['extracted_links'] = asyncio.run(main(
-                base_url=base_url, search_subs=search_subs, prepend_base_url=prepend_base))
+                base_url=base_url,
+                search_subs=search_subs,
+                prepend_base_url=prepend_base,
+                regex=custom_regex))
 
     # prepend the base_url
     if prepend_base:
