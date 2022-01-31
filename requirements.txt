@@ -4,3 +4,4 @@ streamlit
 lxml
 asyncio
 aiohttp
+fast_link_extractor

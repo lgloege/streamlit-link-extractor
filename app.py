@@ -3,87 +3,8 @@ Streamlit app to extract links from a webpage
 Created: 2021-12-29
 Author: L. Gloege
 '''
-import streamlit.components.v1 as components
 import streamlit as st
-from bs4 import BeautifulSoup
-from itertools import chain
-import asyncio
-import aiohttp
-import lxml
-import re
-
-
-def format_base_url(base_url):
-    # ensure url starts with https://
-    if not base_url.startswith(('http://', 'https://')):
-        base_url = 'https://' + base_url
-
-    # ensure url ends with /
-    if not base_url.endswith('/'):
-        base_url = base_url + '/'
-
-    return base_url
-
-
-async def get_html_async(base_url):
-    #base_url = format_base_url(base_url)
-
-    # may need to add this to ClientSession() connector=aiohttp.TCPConnector(ssl=False)
-    async with aiohttp.ClientSession() as client:
-        async with client.get(base_url, ssl=False) as resp:
-            return await resp.text() if (resp.status == 200) else ""
-
-
-def get_links(html_page, base_url):
-    '''extracts all the links and sub-directories from html
-    this extracts all hrefs in a tags
-    '''
-    # "lxml" supposed to be faster than "html.parser
-    soup = BeautifulSoup(html_page, "lxml")
-    regex = ".|(/$)"
-    links = [f"{base_url}{link.get('href')}"
-             for link
-             in soup.findAll('a', attrs={'href': re.compile(regex)})]
-
-    return links
-
-
-def get_sub_dirs(links):
-    '''filters out the sub-directories in links'''
-    sub_dirs = [link for link in links if re.search(r'/$', link)]
-    return sub_dirs
-
-
-def get_files(links, regex=None):
-    '''filters files from links, 
-    can keep files based on a regular expression
-    '''
-    if regex is None:
-        regex = r'[^/]$'
-    file_links = [link for link in links if re.search(regex, link)]
-    return file_links
-
-
-# @st.cache
-async def main(base_url, search_subs=True, prepend_base_url=True, regex=None):
-    files = []
-    base_url = format_base_url(base_url)
-    html_page = await get_html_async(base_url)
-    links = get_links(html_page=html_page, base_url=base_url)
-    sub_dirs = get_sub_dirs(links)
-    base_files = get_files(links, regex=regex)
-    files.extend(base_files)
-
-    # gathers files from sub-directories
-    coros = [main(sub) for sub in sub_dirs]
-    new_files = await asyncio.gather(*coros)
-    files.extend(chain(*new_files))
-
-    if prepend_base_url:
-        files = [base_url + file for file in files]
-
-    return files
-
+import fast_link_extractor as fle
 
 # streamlit containters
 sidebar = st.sidebar
@@ -102,13 +23,12 @@ with sidebar:
     st.title("Options")
     search_subs = st.checkbox('Search sub-directories', value=False)
 
-    prepend_base = st.checkbox('Append base URL to output', value=True)
+    prepend_base = st.checkbox('Append base URL to output', value=False)
     custom_regex = st.text_input('Filter results by regular expression', '.')
 
     st.markdown("---")
     st.subheader(
         "Code available on [GitHub](https://github.com/lgloege/streamlit_link_extractor)")
-
 
 # main content
 with body:
@@ -122,16 +42,16 @@ with body:
     # exexcuted when run_program button clicked
     if run_program:
         with st.spinner('Wait for it...'):
-            st.session_state['extracted_links'] = asyncio.run(main(
+            st.session_state['extracted_links'] = fle.link_extractor(
                 base_url=base_url,
                 search_subs=search_subs,
-                prepend_base_url=prepend_base,
-                regex=custom_regex))
+                prepend_base_url=False,
+                regex=custom_regex)
 
     # prepend the base_url
     if prepend_base:
-        st.session_state['link_area'] = '\n'.join(
-            st.session_state['extracted_links'])
+        st.session_state['link_area'] = '\n'.join(fle.prepend_with_baseurl(
+            st.session_state['extracted_links'], base_url))
     else:
         st.session_state['link_area'] = '\n'.join(
             [x.replace(base_url, '') for x in st.session_state['extracted_links']])
