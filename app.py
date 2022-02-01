@@ -45,7 +45,6 @@ with body:
             st.session_state['extracted_links'] = fle.link_extractor(
                 base_url=base_url,
                 search_subs=search_subs,
-                prepend_base_url=False,
                 regex=custom_regex)
 
     # prepend the base_url
